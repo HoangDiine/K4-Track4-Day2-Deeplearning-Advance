@@ -1,0 +1,52 @@
+{
+  "images_dir": "images",
+  "labels_dir": "data\\labels",
+  "total_images": 17509,
+  "split_sizes": {
+    "train": 10501,
+    "val": 3501,
+    "test": 3507
+  },
+  "class_counts": {
+    "train": {
+      "Chinee apple": 675,
+      "Lantana": 637,
+      "Parkinsonia": 618,
+      "Parthenium": 613,
+      "Prickly acacia": 637,
+      "Rubber vine": 605,
+      "Siam weed": 644,
+      "Snake weed": 609,
+      "Negative": 5463
+    },
+    "val": {
+      "Chinee apple": 225,
+      "Lantana": 213,
+      "Parkinsonia": 206,
+      "Parthenium": 204,
+      "Prickly acacia": 212,
+      "Rubber vine": 202,
+      "Siam weed": 215,
+      "Snake weed": 203,
+      "Negative": 1821
+    },
+    "test": {
+      "Chinee apple": 226,
+      "Lantana": 213,
+      "Parkinsonia": 207,
+      "Parthenium": 205,
+      "Prickly acacia": 213,
+      "Rubber vine": 202,
+      "Siam weed": 215,
+      "Snake weed": 204,
+      "Negative": 1822
+    }
+  },
+  "overlap_counts": {
+    "train_val": 0,
+    "train_test": 0,
+    "val_test": 0
+  },
+  "missing_images": [],
+  "split_union_matches_labels": true
+}
