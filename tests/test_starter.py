@@ -1,16 +1,20 @@
-"""Kiểm tra phần khung starter/: hợp đồng với eval.py, cú pháp, các stub còn là stub, notebook hợp lệ.
+"""Kiểm tra pipeline starter/: hợp đồng với eval.py, cú pháp, inference và notebook.
 
 Chạy từ thư mục gốc repo:
-    python -m unittest discover -s tests -v
+    python -X utf8 -m unittest discover -s tests -v  # Windows console Unicode
 Các module trong starter/ không import torch ở mức module nên test này chạy được không cần GPU.
 """
 import ast
+import base64
+from io import BytesIO
 import json
 import py_compile
+import re
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -57,7 +61,7 @@ class TestPredictionContract(unittest.TestCase):
             ev.save_predictions("unused.csv", ["a.jpg"], [0], np.ones((1, 5)) / 5)
 
 
-class TestTrainSkeleton(unittest.TestCase):
+class TestTrainHelpers(unittest.TestCase):
     def test_pred_path_follows_eval_naming(self):
         cfg = train.Config(exp_id="F01", seed=2, pred_dir="predictions")
         self.assertEqual(train.pred_path(cfg, "test"), Path("predictions/F01_seed2_test.csv"))
@@ -75,33 +79,31 @@ class TestTrainSkeleton(unittest.TestCase):
         self.assertEqual((c.epochs, c.batch_size, c.lr_backbone, c.lr_head, c.weight_decay),
                          (12, 64, 1e-4, 1e-3, 0.05))
 
+    def test_parse_overrides_handles_typed_values_and_rejects_unknown_fields(self):
+        parsed = train.parse_overrides(["seed=1", "amp=false", "lr_head=0.002"])
+        self.assertEqual(parsed, {"seed": 1, "amp": False, "lr_head": 0.002})
+        with self.assertRaisesRegex(ValueError, "không tồn tại"):
+            train.parse_overrides(["not_a_config_field=1"])
+
 
 class TestStarterFiles(unittest.TestCase):
     def test_all_python_files_compile(self):
         for f in sorted(STARTER.glob("*.py")) + [ROOT / "eval.py"]:
             py_compile.compile(str(f), doraise=True)
 
-    def test_todo_stubs_are_still_stubs(self):
-        """Mỗi module khung phải còn nhiều hàm chưa cài đặt (sinh viên tự làm)."""
-        expected_min = {"dataset.py": 6, "model.py": 5, "losses.py": 6, "train.py": 10,
-                        "inference.py": 8, "benchmark.py": 3}
-        for name, minimum in expected_min.items():
+    def test_starter_modules_have_no_not_implemented_stubs(self):
+        for name in ("dataset.py", "model.py", "losses.py", "train.py", "inference.py", "benchmark.py"):
             tree = ast.parse((STARTER / name).read_text(encoding="utf-8"))
-            n = sum(1 for node in ast.walk(tree) if isinstance(node, ast.Raise)
-                    and isinstance(node.exc, ast.Call) and getattr(node.exc.func, "id", "") == "NotImplementedError")
-            self.assertGreaterEqual(n, minimum, f"{name}: chỉ còn {n} stub, kỳ vọng >= {minimum}")
+            stubs = [node for node in ast.walk(tree) if isinstance(node, ast.Raise)
+                     and isinstance(node.exc, ast.Call)
+                     and getattr(node.exc.func, "id", "") == "NotImplementedError"]
+            self.assertEqual(stubs, [], f"{name} still contains NotImplementedError")
 
     def test_starter_has_no_complete_helper_modules(self):
-        """Mọi file trong starter/ đều là pseudo-code: không còn module hoàn chỉnh kiểu records.py."""
+        """The starter implementation does not depend on an undocumented records module."""
         self.assertFalse((STARTER / "records.py").exists())
         for f in STARTER.glob("*.py"):
             self.assertNotIn("import records", f.read_text(encoding="utf-8"), f.name)
-
-    def test_cli_helpers_in_train_are_stubs(self):
-        with self.assertRaises(NotImplementedError):
-            train.parse_overrides(["seed=1"])
-        with self.assertRaises(NotImplementedError):
-            train.main()
 
     def test_notebook_is_valid_and_clean(self):
         nb = json.loads((STARTER / "lab_day2.ipynb").read_text(encoding="utf-8"))
@@ -114,6 +116,77 @@ class TestStarterFiles(unittest.TestCase):
         self.assertIn("eval.py score", text)
         self.assertIn("eval.py grade", text)
         self.assertIn("b7b30f96d466fba86016aa5a26606e0f", text)  # MD5 của images.zip
+        self.assertIn("SOURCE_BUNDLE_BASE64", text)
+        self.assertIn("batch 32", text)
+        for cell in nb["cells"]:
+            if cell["cell_type"] == "code":
+                code = "".join(cell["source"])
+                code = "\n".join(line for line in code.splitlines() if not line.startswith("%"))
+                ast.parse(code)
+        match = re.search(r'SOURCE_BUNDLE_BASE64 = """([A-Za-z0-9+/=]+)"""', text)
+        self.assertIsNotNone(match)
+        with ZipFile(BytesIO(base64.b64decode(match.group(1)))) as archive:
+            names = set(archive.namelist())
+            self.assertIn("eval.py", names)
+            self.assertIn("starter/lab_workflow.py", names)
+            self.assertIn("starter/inference.py", names)
+
+
+class TestInferenceHelpers(unittest.TestCase):
+    def test_probability_and_logit_aggregation_are_normalized(self):
+        from inference import aggregate_views
+        logits = [np.array([[3.0, 0.0, -1.0]]), np.array([[0.0, 2.0, -1.0]])]
+        for space in ("prob", "logit"):
+            probs = aggregate_views(logits, space)
+            self.assertAlmostEqual(float(probs.sum()), 1.0)
+            self.assertTrue(np.isfinite(probs).all())
+
+    def test_temperature_is_positive_and_preserves_top1(self):
+        from inference import apply_temperature, fit_temperature
+        logits = np.array([[4.0, 0.0, -2.0], [0.0, 3.0, -1.0], [1.0, -1.0, 2.0]])
+        labels = np.array([0, 1, 2])
+        temperature = fit_temperature(logits, labels)
+        probs = apply_temperature(logits, temperature)
+        self.assertGreater(temperature, 0)
+        np.testing.assert_array_equal(probs.argmax(1), logits.argmax(1))
+
+    def test_multicrop_returns_four_corners_and_center(self):
+        import torch
+        from inference import views_multicrop
+        views = views_multicrop(torch.zeros(2, 3, 256, 256), 224)
+        self.assertEqual(len(views), 5)
+        self.assertEqual(tuple(views[0].shape), (2, 3, 224, 224))
+
+    def test_conv_bn_fusion_matches_eval_output_within_tolerance(self):
+        import torch
+        from inference import fuse_conv_bn
+        model = torch.nn.Sequential(torch.nn.Conv2d(3, 4, 3, padding=1, bias=False),
+                                   torch.nn.BatchNorm2d(4), torch.nn.ReLU()).eval()
+        images = torch.randn(2, 3, 16, 16)
+        fused = fuse_conv_bn(model, example=images, tolerance=1e-5)
+        with torch.inference_mode():
+            difference = (model(images) - fused(images)).abs().max().item()
+        self.assertLessEqual(difference, 1e-5)
+
+    def test_latency_benchmark_warms_up_and_synchronizes_each_measurement(self):
+        from benchmark import bench
+        calls, syncs = [], []
+        timing = bench(lambda: calls.append(1), warmup=10, iters=50, sync=lambda: syncs.append(1))
+        self.assertEqual(timing["warmup"], 10)
+        self.assertEqual(timing["n"], 50)
+        self.assertEqual(len(calls), 60)
+        self.assertEqual(len(syncs), 100)
+        self.assertLessEqual(timing["p50"], timing["p95"])
+        self.assertLessEqual(timing["p95"], timing["p99"])
+
+    def test_latency_report_supports_batch_32(self):
+        import torch
+        from benchmark import latency_report
+        model = torch.nn.Conv2d(3, 2, kernel_size=1).eval()
+        report = latency_report(model, batch_size=32, img_size=8, device="cpu", iters=50)
+        self.assertEqual(report["batch"], 32)
+        self.assertEqual(report["n"], 50)
+        self.assertGreater(report["images_per_s"], 0)
 
 
 if __name__ == "__main__":

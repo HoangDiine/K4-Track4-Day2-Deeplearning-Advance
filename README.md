@@ -3,7 +3,7 @@
 > Track 4 · Ngày 2 · *Tích chập, chuỗi, attention · backbone · huấn luyện · suy luận*
 > Bài lab này mở rộng **Lab #2** trong slide Day 2. Slide chỉ yêu cầu 1 backbone, 3 cách khởi tạo, có/không CutMix và TTA. Ở đây bạn làm đầy đủ: **≥ 5 backbone**, **nhiều công thức huấn luyện**, **nhiều cách suy luận**, rồi chọn cấu hình tốt nhất và báo cáo.
 
-Repo gồm **hướng dẫn, tiêu chí chấm, bộ khung code (pseudo-code) và công cụ đánh giá**. Bộ khung `starter/` chỉ có chữ ký hàm, docstring và các bước `TODO`: **bạn tự viết phần ruột** (model, loss, augmentation, vòng huấn luyện, TTA, đo độ trễ). Riêng `eval.py` đã hoàn chỉnh, bạn không sửa. Làm vậy để bạn hiểu từng thành phần trong slide, nhưng vẫn đo bằng cùng một thước.
+Repo gồm **hướng dẫn, tiêu chí chấm, mã tham chiếu chạy được và công cụ đánh giá**. Thư mục `starter/` chứa pipeline huấn luyện, suy luận và benchmark có thể chạy trên GPU; `eval.py` đã hoàn chỉnh và không sửa. Có thể dùng mã này làm điểm bắt đầu rồi điều chỉnh cấu hình thí nghiệm.
 
 | File | Dùng để làm gì |
 |---|---|
@@ -11,8 +11,8 @@ Repo gồm **hướng dẫn, tiêu chí chấm, bộ khung code (pseudo-code) v�
 | [`GUIDE.md`](GUIDE.md) | Quy trình từng bước, danh sách thí nghiệm, cấu trúc file xlsx và báo cáo, bẫy thường gặp |
 | [`RUBRIC.md`](RUBRIC.md) | Thang điểm 100, tiêu chí đạt, lỗi bị trừ điểm |
 | [`eval.py`](eval.py) | **Đã hoàn chỉnh.** Tính chỉ số đúng định nghĩa ở mục 2.2 và tự chấm phần I của RUBRIC (mục 2.4) |
-| [`starter/`](starter) | **Pseudo-code** để bạn hoàn thiện: `dataset.py`, `model.py`, `losses.py`, `train.py`, `inference.py`, `benchmark.py`, `lab_day2.ipynb` |
-| [`tests/`](tests) | Test của `eval.py` và của bộ khung (chạy được không cần GPU) |
+| [`starter/`](starter) | Pipeline chạy được: `dataset.py`, `model.py`, `losses.py`, `train.py`, `inference.py`, `benchmark.py`, `lab_workflow.py`, `lab_day2.ipynb` |
+| [`tests/`](tests) | Test cho `eval.py` và các hàm lõi (chạy được không cần GPU) |
 
 ---
 
@@ -130,7 +130,7 @@ Lưu ý khi so sánh với kết quả của bạn:
 - Các số theo lớp của bài báo được coi là tương đương recall theo lớp khi đối chiếu (giả định, bài báo không nói rõ).
 - Bài báo chia ngẫu nhiên, không theo địa điểm, nên điểm test có thể hơi lạc quan so với khi gặp địa điểm mới. Hãy nêu điều này trong phần *Hạn chế* của báo cáo.
 
-### 2.4 Công cụ: `eval.py` và bộ khung `starter/`
+### 2.4 Công cụ: `eval.py` và mã tham chiếu `starter/`
 
 **`eval.py` (đã hoàn chỉnh, chỉ cần numpy và pandas).** Mọi con số của bạn phải khớp kết quả của file này.
 
@@ -148,7 +148,7 @@ python eval.py grade --final "predictions/F01_seed*_test.csv" --baseline "predic
 - `grade` tính điểm đề xuất cho I1–I4 (và I5 nếu bạn truyền `--latency-p95-ms`). Thêm `--uncal` (dự đoán test của cùng cấu hình khi chưa temperature scaling) để chấm I4(a), và `--final-val` (dự đoán val của chung kết, đặt tên `<exp_id>_seed<k>_val.csv`) để chấm I4(b). Ngưỡng điểm là **tạm thời** và nằm ở đầu file `eval.py`.
 - Lỗi định dạng làm `eval.py` thoát với mã 2 và in rõ file nào, dòng nào sai.
 
-**Bộ khung `starter/` (pseudo-code, bạn hoàn thiện):**
+**Mã tham chiếu `starter/`:**
 
 | File | Bạn làm gì |
 |---|---|
@@ -158,9 +158,11 @@ python eval.py grade --final "predictions/F01_seed*_test.csv" --baseline "predic
 | `train.py` | Một hàm `run(cfg)` dùng chung: AMP, warmup + cosine, EMA, chọn checkpoint theo macro-F1 val, vẽ đường cong |
 | `inference.py` | TTA, gộp xác suất/logit, ensemble, temperature scaling, gộp BatchNorm |
 | `benchmark.py` | Đo độ trễ p50/p95/p99 đúng cách |
-| `lab_day2.ipynb` | Notebook Colab/Kaggle: phần cài đặt và tải dữ liệu đã viết sẵn, các ô `TODO` là phần của bạn |
+| `lab_day2.ipynb` | Notebook Kaggle/Colab tự chứa snapshot mã nguồn; bật GPU và Internet, chạy các ô theo thứ tự |
 
-Cách dùng: chép `starter/` thành `code/` trong thư mục bài nộp của bạn, hoàn thiện các `TODO`, giữ nguyên **tên hàm và kiểu dữ liệu vào/ra** ghi trong docstring (bạn được thêm hàm, tham số, file mới). Chạy test của repo bằng `python -m unittest discover -s tests` (cần scikit-learn).
+Cách dùng: chép `starter/` thành `code/` trong thư mục bài nộp của bạn, kiểm tra cấu hình và chạy notebook theo thứ tự. Có thể xác minh hàm lõi bằng `python -X utf8 -m unittest discover -s tests` trên Windows (cần scikit-learn). Không sửa `eval.py`; các thí nghiệm chọn cấu hình trên validation và chỉ dùng test ở vòng chung kết.
+
+Sau khi thay đổi các module trong `starter/`, chạy `python starter/prepare_kaggle_notebook.py` để cập nhật snapshot mã nguồn được nhúng trong `lab_day2.ipynb`.
 
 ## 3. Môi trường gợi ý: Google Colab hoặc Kaggle
 

@@ -189,31 +189,31 @@ Chọn **ít nhất 5**, thỏa các ràng buộc sau:
 
 | Mã | Phương pháp | Ghi chú |
 |---|---|---|
-| I00 | **1 view** (mốc) | Resize + center crop, `model.eval()` |
-| I01 | **TTA lật ngang** (K = 2) | Slide trang 62, 75 |
-| I02 | **TTA nhiều crop hoặc nhiều tỉ lệ** (ví dụ 5 crop, hoặc 3 tỉ lệ) | K càng lớn, chi phí gần tuyến tính theo K (slide trang 63) |
-| I03 | **Gộp xác suất vs gộp logit** | Slide chưa có kết luận cái nào luôn tốt hơn: chọn một, ghi rõ, hoặc so sánh cả hai |
-| I04 | **Dò độ phân giải kiểm tra** (ví dụ 224 / 256 / 288 / 320) | Slide trang 68 (FixRes): test ở độ phân giải cao hơn lúc train có thể tốt hơn; không đổi tham số, chỉ tăng FLOPs |
-| I05 | **Ensemble** vài mô hình (khác backbone hoặc khác seed) | Trung bình xác suất; chi phí = số mô hình (slide trang 67) |
-| I06 | **Trọng số EMA** (nếu đã train có EMA) hoặc **model soup** | Không tốn thêm khi suy luận (slide trang 67) |
-| I07 | **Temperature scaling + ECE** | Khớp một T duy nhất trên **val**, đo ECE trước và sau. Accuracy không đổi (slide trang 69) |
-| I08 | **Gộp BatchNorm vào conv** hoặc **FP16/AMP** | Hiệu chỉnh/độ chính xác có thay đổi không? Đo độ trễ (slide trang 71) |
+| I00 | **1 view** (mốc) | Resize 256 + Center Crop 224, `model.eval()` |
+| I01 | **TTA lật ngang** (K = 2) | Ảnh gốc + `torch.flip(..., dims=(-1,))`; lấy trung bình xác suất |
+| I02 | **TTA multi-crop** (K = 5) | Bốn góc + một crop trung tâm; lấy trung bình xác suất |
+| I03 | **Gộp xác suất vs gộp logit** | So sánh `mean(softmax(z_k))` với `softmax(mean(z_k))` trên cùng các view |
+| I04 | **Test-Time Resolution / FixRes** | Train 224; thử inference 256 hoặc 288, không cập nhật trọng số |
+| I05 | **Ensemble** | Kết hợp xác suất của 2–3 mô hình tốt nhất; ghi rõ backbone/checkpoint |
+| I06 | **EMA hoặc model soup** (tùy chọn) | Chỉ dùng nếu đã tạo trọng số phù hợp trong quá trình train |
+| I07 | **Temperature scaling + ECE** | Fit một T > 0 bằng NLL trên **val**; báo ECE 15 bin trước/sau và xác nhận Top-1 không đổi |
+| I08 | **Gộp Conv-BN + FP16 inference** | So sánh output trước/sau gộp (max sai khác ≤ 1e-5), sau đó đo FP16 |
 
 ### 4.1 Đo độ trễ đúng cách
 
 Đây là phần hay làm sai nhất (slide trang 73, 76). Quy tắc:
 
-- **Warmup:** chạy 10 lần đầu bỏ đi (lần đầu tải thư viện, cuBLAS...).
-- **Đồng bộ GPU:** GPU chạy bất đồng bộ. Trước và sau đoạn cần đo phải gọi `torch.cuda.synchronize()` (hoặc dùng CUDA event). Dùng `time.time()` mà không đồng bộ sẽ cho số sai.
-- **Nhiều lần đo:** ≥ 50 lần, báo cáo **p50, p95, p99**, không chỉ trung bình.
-- **Hai điều kiện:** batch 1 (giống robot) và một batch lớn hơn (ví dụ 32, đo thông lượng ảnh/giây).
+- **Warmup:** chạy ít nhất 10 lần đầu và bỏ kết quả (loại overhead khởi tạo thư viện/cuBLAS).
+- **Đồng bộ GPU:** gọi `torch.cuda.synchronize()` ngay trước `time.perf_counter()` và ngay sau forward (hoặc dùng CUDA event).
+- **Nhiều lần đo:** tối thiểu 50 lần, báo cáo **p50, p95, p99**, không chỉ trung bình.
+- **Hai điều kiện bắt buộc:** batch 1 (giống robot) và batch 32 (throughput ảnh/giây).
 - **Ghi rõ điều kiện:** tên GPU, độ phân giải, dtype (FP32/AMP/FP16), có/không gộp BN, phiên bản torch.
 - **Tính cả tiền xử lý hay không?** Chọn một cách và ghi rõ. Với TTA, thời gian gần bằng K lần một lượt chạy.
 - Nhớ rằng ở batch 1 trên một số GPU, AMP có thể **chậm hơn** FP32 (slide trang 73). Hãy kiểm tra trên máy của bạn, đừng giả định.
 
 ### 4.2 Tổng hợp
 
-Với mỗi phương pháp ghi: macro-F1 val, top-1 val, ECE (nếu đo), độ trễ p50/p95/p99 ở batch 1, và **chi phí tương đối** so với I00. Từ đó vẽ **đường đánh đổi** độ chính xác và độ trễ (một biểu đồ scatter là đủ). Slide kết luận TTA và ensemble hợp *ngoại tuyến*, còn trên robot nên dùng thứ không tốn thêm (EMA, soup, gộp BN, FP16, độ phân giải đã dò). Dữ liệu của bạn có ủng hộ kết luận này không?
+Với mỗi phương pháp ghi: macro-F1 val, top-1 val, ECE (nếu đo), p50/p95/p99 ở batch 1 và batch 32, throughput batch 32, và **chi phí tương đối** so với I00. Từ đó vẽ **đường đánh đổi** độ chính xác và độ trễ (một biểu đồ scatter là đủ). Slide kết luận TTA và ensemble hợp *ngoại tuyến*, còn trên robot nên dùng thứ không tốn thêm (EMA, soup, gộp BN, FP16, độ phân giải đã dò). Dữ liệu của bạn có ủng hộ kết luận này không?
 
 ---
 
