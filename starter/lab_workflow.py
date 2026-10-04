@@ -295,12 +295,13 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
     from inference import aggregate_views, apply_temperature, fit_temperature, fuse_conv_bn, views_multicrop, view_hflip
     output_dir = Path(output_dir)
     train_df, val_df, _test_df = load_split(labels_dir, fold=0)
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device_name = str(device)
     model = _load_eval_model(selected, device)
     val_loader = _loader(val_df, images_dir, 224, batch_size, num_workers)
     names, labels, base_logits = _predict(model, val_loader, device)
     base_latency = _paired_latency(latency_report, model=model, img_size=224, dtype="fp32",
-                                   device="cuda", warmup=10, iters=50)
+                                   device=device_name, warmup=10, iters=50)
     rows = [_record("I00", "Standard 1-view FP32", base_logits, labels, base_latency, selected,
                     note="Resize 256 + CenterCrop 224; model.eval()")]
 
@@ -308,7 +309,7 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
     if names != flip_names or not np.array_equal(labels, flip_labels):
         raise RuntimeError("TTA flip làm thay đổi thứ tự ảnh")
     flip_latency = _paired_latency(tta_latency, model=model, k_views=2, img_size=224,
-                                   dtype="fp32", device="cuda", warmup=10, iters=50)
+                                   dtype="fp32", device=device_name, warmup=10, iters=50)
     flip_probs = aggregate_views([base_logits, flip_logits], "prob")
     rows.append(_record("I01", "Horizontal flip TTA, K=2, mean probabilities",
                         np.log(np.clip(flip_probs, 1e-12, 1)), labels, flip_latency,
@@ -330,7 +331,7 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
     if crop_names != names or not np.array_equal(crop_labels, labels):
         raise RuntimeError("Multi-crop views làm thay đổi thứ tự ảnh hoặc nhãn")
     crop_latency = _paired_latency(tta_latency, model=model, k_views=5, img_size=224,
-                                   dtype="fp32", device="cuda", warmup=10, iters=50)
+                                   dtype="fp32", device=device_name, warmup=10, iters=50)
     crop_prob = aggregate_views(crop_logits, "prob")
     rows.append(_record("I02", "Multi-crop TTA, K=5, mean probabilities",
                         np.log(np.clip(crop_prob, 1e-12, 1)), labels, crop_latency,
@@ -361,27 +362,52 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
         highres_loader = _loader(val_df, images_dir, 256, batch_size, num_workers)
         highres_names, highres_labels, highres_logits = _predict(model, highres_loader, device)
         highres_latency = _paired_latency(latency_report, model=model, img_size=256, dtype="fp32",
-                                          device="cuda", warmup=10, iters=50)
+                                          device=device_name, warmup=10, iters=50)
         if highres_names == names and np.array_equal(highres_labels, labels):
             rows.append(_record("I04", "Test-time resolution / FixRes, 256", highres_logits,
                                 labels, highres_latency, selected, note="Train 224; validation input 256"))
     except (RuntimeError, ValueError, TypeError) as exc:
         print(f"I04 resolution 256 skipped: {exc}")
 
-    # Ensemble the selected recipe with the next-best different backbone.
-    second = next((row for row in top_backbones if row["backbone"] != selected["backbone"]), None)
-    if second is not None:
-        second_model = _load_eval_model(second, device)
-        e_names, e_labels, e_logits = _predict(second_model, val_loader, device)
-        if e_names == names and np.array_equal(e_labels, labels):
-            ensemble_prob = aggregate_views([base_logits, e_logits], "prob")
-            ensemble_latency = _paired_latency(
-                benchmark_ensemble_latency, models=[model, second_model], img_size=224, dtype="fp32",
-                device="cuda", warmup=10, iters=50)
-            rows.append(_record("I05", "Two-model probability ensemble",
-                                np.log(np.clip(ensemble_prob, 1e-12, 1)), labels,
-                                ensemble_latency, selected, view_count=2,
-                                note=f"selected recipe + {second['backbone']}"))
+    # Ensemble the selected recipe with the next one or two best different backbones.
+    ensemble_models, ensemble_rows, ensemble_logits = [], [], []
+    for candidate in top_backbones:
+        if candidate["backbone"] == selected["backbone"]:
+            continue
+        candidate_model = None
+        try:
+            candidate_model = _load_eval_model(candidate, device)
+            e_names, e_labels, e_logits = _predict(candidate_model, val_loader, device)
+            if e_names != names or not np.array_equal(e_labels, labels):
+                raise RuntimeError("Ensemble checkpoint validation order differs from I00")
+            ensemble_models.append(candidate_model)
+            ensemble_rows.append(candidate)
+            ensemble_logits.append(e_logits)
+            candidate_model = None  # Retain successful models until the ensemble benchmark ends.
+            if len(ensemble_models) == 2:  # selected model + at most two others = K 2–3
+                break
+        except (RuntimeError, ValueError, TypeError, KeyError) as exc:
+            print(f"I05 {candidate.get('backbone', 'unknown')} skipped: {exc}")
+        finally:
+            if candidate_model is not None:
+                del candidate_model
+                if device.type == "cuda":
+                    torch.cuda.empty_cache()
+    if ensemble_models:
+        ensemble_prob = aggregate_views([base_logits, *ensemble_logits], "prob")
+        ensemble_models_all = [model, *ensemble_models]
+        ensemble_latency = _paired_latency(
+            benchmark_ensemble_latency, models=ensemble_models_all, img_size=224, dtype="fp32",
+            device=device_name, warmup=10, iters=50)
+        ensemble_names = [selected["backbone"], *[row["backbone"] for row in ensemble_rows]]
+        rows.append(_record("I05", f"{len(ensemble_models_all)}-model probability ensemble",
+                            np.log(np.clip(ensemble_prob, 1e-12, 1)), labels,
+                            ensemble_latency, selected, view_count=len(ensemble_models_all),
+                            note=" + ".join(ensemble_names)))
+        del ensemble_models_all
+        del ensemble_models
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
 
     # Try the chosen checkpoint first, then other trained checkpoints if its BN
     # layout cannot be fused within the required 1e-5 equivalence tolerance.
@@ -398,15 +424,23 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
             sample = next(iter(val_loader))[0][:1].to(device, non_blocking=True)
             fused_model = fuse_conv_bn(candidate_model, example=sample, tolerance=1e-5).eval()
             fusion_error = fused_model._conv_bn_fuse_max_abs_error
-            half_model = copy.deepcopy(fused_model).half().eval()
-            fused_names, fused_labels, fused_logits = _predict(half_model, val_loader, device, amp=True)
-            fused_latency = _paired_latency(latency_report, model=half_model, img_size=224,
-                                            dtype="fp16", device="cuda", warmup=10, iters=50)
+            if device.type == "cuda":
+                optimized_model = copy.deepcopy(fused_model).half().eval()
+                dtype, amp = "fp16", True
+                method = "Conv-BN fused + FP16 inference"
+                note = f"max fusion error={fusion_error:.3g}; tolerance=1e-5"
+            else:
+                optimized_model = fused_model
+                dtype, amp = "fp32", False
+                method = "Conv-BN fused; FP16 unavailable on CPU"
+                note = f"max fusion error={fusion_error:.3g}; tolerance=1e-5; FP16 skipped on CPU"
+            fused_names, fused_labels, fused_logits = _predict(optimized_model, val_loader, device, amp=amp)
+            fused_latency = _paired_latency(latency_report, model=optimized_model, img_size=224,
+                                            dtype=dtype, device=device_name, warmup=10, iters=50)
             if fused_names != names or not np.array_equal(fused_labels, labels):
                 raise RuntimeError("I08 validation order differs from I00")
-            rows.append(_record("I08", "Conv-BN fused + FP16 inference", fused_logits,
-                                labels, fused_latency, bn_result,
-                                note=f"max fusion error={fusion_error:.3g}; tolerance=1e-5"))
+            rows.append(_record("I08", method, fused_logits,
+                                labels, fused_latency, bn_result, note=note))
             rows[-1]["fusion max abs error"] = fusion_error
             i08_done = True
             break
@@ -415,7 +449,8 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
         finally:
             if candidate_model is not None and candidate_model is not model:
                 del candidate_model
-                torch.cuda.empty_cache()
+                if device.type == "cuda":
+                    torch.cuda.empty_cache()
     if not i08_done:
         print("I08 skipped: no BatchNorm checkpoint passed the 1e-5 fusion check")
 
@@ -462,6 +497,36 @@ def sweep_inference(selected: dict, top_backbones: list[dict], images_dir: str |
         np.savez_compressed(save_dir / f"{row['exp_id']}.npz", filenames=np.asarray(names),
                             y_true=labels, probs=row["_probabilities"], scores=row["_scores"])
     return selection
+
+
+def run_inference_only(checkpoint_path: str | Path, backbone: str,
+                       images_dir: str | Path, labels_dir: str | Path,
+                       output_dir: str | Path,
+                       ensemble_checkpoints: list[dict] | None = None,
+                       batch_size: int = 32, num_workers: int = 2) -> dict:
+    """Run I00-I08 from existing checkpoint(s) without entering any training runner."""
+    import torch
+    checkpoint_path = Path(checkpoint_path).expanduser().resolve()
+    if not checkpoint_path.is_file():
+        raise FileNotFoundError(f"Checkpoint không tồn tại: {checkpoint_path}")
+    if not backbone:
+        raise ValueError("Cần tên backbone đúng với checkpoint đã huấn luyện")
+    candidates = [{"exp_id": "I00", "backbone": backbone,
+                   "checkpoint": str(checkpoint_path)}]
+    ensemble_checkpoints = ensemble_checkpoints or []
+    if len(ensemble_checkpoints) > 2:
+        raise ValueError("I05 hỗ trợ tối đa hai checkpoint phụ (ensemble tổng 2–3 mô hình)")
+    for index, item in enumerate(ensemble_checkpoints, start=1):
+        candidate_path = Path(item["checkpoint"]).expanduser().resolve()
+        if not candidate_path.is_file():
+            raise FileNotFoundError(f"Ensemble checkpoint không tồn tại: {candidate_path}")
+        if not item.get("backbone"):
+            raise ValueError("Mỗi checkpoint ensemble cần trường backbone")
+        candidates.append({"exp_id": item.get("exp_id", f"E{index:02d}"),
+                           "backbone": item["backbone"],
+                           "checkpoint": str(candidate_path)})
+    return sweep_inference(candidates[0], candidates, images_dir, labels_dir,
+                           output_dir, batch_size=batch_size, num_workers=num_workers)
 
 
 def run_final_and_score(study: dict, images_dir: str | Path, labels_dir: str | Path,

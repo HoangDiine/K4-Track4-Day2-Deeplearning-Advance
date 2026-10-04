@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 from zipfile import ZipFile
 
 import numpy as np
@@ -118,6 +119,9 @@ class TestStarterFiles(unittest.TestCase):
         self.assertIn("b7b30f96d466fba86016aa5a26606e0f", text)  # MD5 của images.zip
         self.assertIn("SOURCE_BUNDLE_BASE64", text)
         self.assertIn("batch 32", text)
+        self.assertIn("run_inference_only", text)
+        self.assertIn("CHECKPOINT_PATH = None", text)
+        self.assertNotIn("assert torch.cuda.is_available()", text)
         for cell in nb["cells"]:
             if cell["cell_type"] == "code":
                 code = "".join(cell["source"])
@@ -133,6 +137,36 @@ class TestStarterFiles(unittest.TestCase):
 
 
 class TestInferenceHelpers(unittest.TestCase):
+    def test_inference_only_uses_supplied_checkpoints_without_training(self):
+        import lab_workflow
+        with tempfile.TemporaryDirectory() as directory:
+            primary = Path(directory) / "primary.pth"
+            second = Path(directory) / "second.pth"
+            third = Path(directory) / "third.pth"
+            for path in (primary, second, third):
+                path.write_bytes(b"checkpoint")
+            expected = {"rows": [], "realtime_candidate": None}
+            with patch.object(lab_workflow, "sweep_inference", return_value=expected) as sweep, \
+                    patch.object(lab_workflow, "_cached_run", side_effect=AssertionError("training called")):
+                result = lab_workflow.run_inference_only(
+                    primary, "convnext_tiny", "images", "labels", directory,
+                    ensemble_checkpoints=[
+                        {"backbone": "swin_tiny_patch4_window7_224", "checkpoint": second},
+                        {"backbone": "resnet50", "checkpoint": third},
+                    ])
+            self.assertIs(result, expected)
+            self.assertEqual(len(sweep.call_args.args[1]), 3)  # primary + two ensemble checkpoints
+
+    def test_inference_only_rejects_missing_checkpoint_without_training(self):
+        import lab_workflow
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing.pth"
+            with patch.object(lab_workflow, "sweep_inference") as sweep:
+                with self.assertRaisesRegex(FileNotFoundError, "Checkpoint không tồn tại"):
+                    lab_workflow.run_inference_only(
+                        missing, "convnext_tiny", "images", "labels", directory)
+            sweep.assert_not_called()
+
     def test_probability_and_logit_aggregation_are_normalized(self):
         from inference import aggregate_views
         logits = [np.array([[3.0, 0.0, -1.0]]), np.array([[0.0, 2.0, -1.0]])]

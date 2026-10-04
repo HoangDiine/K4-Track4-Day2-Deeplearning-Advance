@@ -160,7 +160,7 @@ python eval.py grade --final "predictions/F01_seed*_test.csv" --baseline "predic
 | `benchmark.py` | Đo độ trễ p50/p95/p99 đúng cách |
 | `lab_day2.ipynb` | Notebook Kaggle/Colab tự chứa snapshot mã nguồn; bật GPU và Internet, chạy các ô theo thứ tự |
 
-Cách dùng: chép `starter/` thành `code/` trong thư mục bài nộp của bạn, kiểm tra cấu hình và chạy notebook theo thứ tự. Có thể xác minh hàm lõi bằng `python -X utf8 -m unittest discover -s tests` trên Windows (cần scikit-learn). Không sửa `eval.py`; các thí nghiệm chọn cấu hình trên validation và chỉ dùng test ở vòng chung kết.
+Cách dùng: chép `starter/` thành `code/` trong thư mục bài nộp của bạn, kiểm tra cấu hình và chạy notebook theo thứ tự. Để chỉ chạy Bước 3 mà không train lại, dùng `run_inference_only(checkpoint_path, backbone, ...)` với checkpoint đã có; hàm chỉ đánh giá validation. Có thể chạy benchmark CPU, nhưng FP16 chỉ đo khi có CUDA và tiêu chí p95 ≤ 100 ms phải được xác nhận bằng kết quả thật trên máy chạy. Có thể xác minh hàm lõi bằng `python -X utf8 -m unittest discover -s tests` trên Windows (cần scikit-learn). Không sửa `eval.py`; các thí nghiệm chọn cấu hình trên validation và chỉ dùng test ở vòng chung kết.
 
 Sau khi thay đổi các module trong `starter/`, chạy `python starter/prepare_kaggle_notebook.py` để cập nhật snapshot mã nguồn được nhúng trong `lab_day2.ipynb`.
 
