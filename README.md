@@ -11,7 +11,7 @@ Repo gồm **hướng dẫn, tiêu chí chấm, mã tham chiếu chạy được
 | [`GUIDE.md`](GUIDE.md) | Quy trình từng bước, danh sách thí nghiệm, cấu trúc file xlsx và báo cáo, bẫy thường gặp |
 | [`RUBRIC.md`](RUBRIC.md) | Thang điểm 100, tiêu chí đạt, lỗi bị trừ điểm |
 | [`eval.py`](eval.py) | **Đã hoàn chỉnh.** Tính chỉ số đúng định nghĩa ở mục 2.2 và tự chấm phần I của RUBRIC (mục 2.4) |
-| [`starter/`](starter) | Pipeline chạy được: `dataset.py`, `model.py`, `losses.py`, `train.py`, `inference.py`, `benchmark.py`, `lab_workflow.py`, `lab_day2.ipynb` |
+| [`starter/`](starter) | Pipeline chạy được: `dataset.py`, `model.py`, `losses.py`, `train.py`, `inference.py`, `benchmark.py`, `lab_day2.ipynb` |
 | [`tests/`](tests) | Test cho `eval.py` và các hàm lõi (chạy được không cần GPU) |
 
 ---
@@ -158,11 +158,11 @@ python eval.py grade --final "predictions/F01_seed*_test.csv" --baseline "predic
 | `train.py` | Một hàm `run(cfg)` dùng chung: AMP, warmup + cosine, EMA, chọn checkpoint theo macro-F1 val, vẽ đường cong |
 | `inference.py` | TTA, gộp xác suất/logit, ensemble, temperature scaling, gộp BatchNorm |
 | `benchmark.py` | Đo độ trễ p50/p95/p99 đúng cách |
-| `lab_day2.ipynb` | Notebook Kaggle/Colab tự chứa snapshot mã nguồn; bật GPU và Internet, chạy các ô theo thứ tự |
+| `lab_day2.ipynb` | Notebook khung cho Kaggle/Colab, sử dụng các module trong `starter/` |
 
 Cách dùng: chép `starter/` thành `code/` trong thư mục bài nộp của bạn, kiểm tra cấu hình và chạy notebook theo thứ tự. Để chỉ chạy Bước 3 mà không train lại, dùng `run_inference_only(checkpoint_path, backbone, ...)` với checkpoint đã có; hàm chỉ đánh giá validation. Có thể chạy benchmark CPU, nhưng FP16 chỉ đo khi có CUDA và tiêu chí p95 ≤ 100 ms phải được xác nhận bằng kết quả thật trên máy chạy. Có thể xác minh hàm lõi bằng `python -X utf8 -m unittest discover -s tests` trên Windows (cần scikit-learn). Không sửa `eval.py`; các thí nghiệm chọn cấu hình trên validation và chỉ dùng test ở vòng chung kết.
 
-Sau khi thay đổi các module trong `starter/`, chạy `python starter/prepare_kaggle_notebook.py` để cập nhật snapshot mã nguồn được nhúng trong `lab_day2.ipynb`.
+Notebook không đóng gói sẵn checkpoint. Ở Bước 3, trỏ `CHECKPOINT_PATH` tới `best.pth` đã lưu từ lần huấn luyện trước; cell suy luận không train lại.
 
 ## 3. Môi trường gợi ý: Google Colab hoặc Kaggle
 

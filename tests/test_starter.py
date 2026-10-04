@@ -5,17 +5,13 @@ Chạy từ thư mục gốc repo:
 Các module trong starter/ không import torch ở mức module nên test này chạy được không cần GPU.
 """
 import ast
-import base64
-from io import BytesIO
 import json
 import py_compile
-import re
 import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-from zipfile import ZipFile
 
 import numpy as np
 import pandas as pd
@@ -105,6 +101,9 @@ class TestStarterFiles(unittest.TestCase):
         self.assertFalse((STARTER / "records.py").exists())
         for f in STARTER.glob("*.py"):
             self.assertNotIn("import records", f.read_text(encoding="utf-8"), f.name)
+        expected = {"benchmark.py", "dataset.py", "inference.py", "lab_day2.ipynb",
+                    "losses.py", "model.py", "train.py"}
+        self.assertEqual({path.name for path in STARTER.iterdir() if path.is_file()}, expected)
 
     def test_notebook_is_valid_and_clean(self):
         nb = json.loads((STARTER / "lab_day2.ipynb").read_text(encoding="utf-8"))
@@ -117,28 +116,24 @@ class TestStarterFiles(unittest.TestCase):
         self.assertIn("eval.py score", text)
         self.assertIn("eval.py grade", text)
         self.assertIn("b7b30f96d466fba86016aa5a26606e0f", text)  # MD5 của images.zip
-        self.assertIn("SOURCE_BUNDLE_BASE64", text)
+        self.assertNotIn("SOURCE_BUNDLE_BASE64", text)
         self.assertIn("batch 32", text)
         self.assertIn("run_inference_only", text)
+        self.assertIn("from inference import run_inference_only", text)
+        self.assertNotIn("from lab_workflow import", text)
         self.assertIn("CHECKPOINT_PATH = None", text)
         self.assertNotIn("assert torch.cuda.is_available()", text)
         for cell in nb["cells"]:
             if cell["cell_type"] == "code":
                 code = "".join(cell["source"])
-                code = "\n".join(line for line in code.splitlines() if not line.startswith("%"))
+                if any(line.lstrip().startswith(("%", "!")) for line in code.splitlines()):
+                    continue  # Colab/IPython magics are not valid Python AST syntax.
                 ast.parse(code)
-        match = re.search(r'SOURCE_BUNDLE_BASE64 = """([A-Za-z0-9+/=]+)"""', text)
-        self.assertIsNotNone(match)
-        with ZipFile(BytesIO(base64.b64decode(match.group(1)))) as archive:
-            names = set(archive.namelist())
-            self.assertIn("eval.py", names)
-            self.assertIn("starter/lab_workflow.py", names)
-            self.assertIn("starter/inference.py", names)
 
 
 class TestInferenceHelpers(unittest.TestCase):
     def test_inference_only_uses_supplied_checkpoints_without_training(self):
-        import lab_workflow
+        import inference
         with tempfile.TemporaryDirectory() as directory:
             primary = Path(directory) / "primary.pth"
             second = Path(directory) / "second.pth"
@@ -146,9 +141,9 @@ class TestInferenceHelpers(unittest.TestCase):
             for path in (primary, second, third):
                 path.write_bytes(b"checkpoint")
             expected = {"rows": [], "realtime_candidate": None}
-            with patch.object(lab_workflow, "sweep_inference", return_value=expected) as sweep, \
-                    patch.object(lab_workflow, "_cached_run", side_effect=AssertionError("training called")):
-                result = lab_workflow.run_inference_only(
+            with patch.object(inference, "sweep_inference", return_value=expected) as sweep, \
+                    patch.object(train, "run", side_effect=AssertionError("training called")):
+                result = inference.run_inference_only(
                     primary, "convnext_tiny", "images", "labels", directory,
                     ensemble_checkpoints=[
                         {"backbone": "swin_tiny_patch4_window7_224", "checkpoint": second},
@@ -158,12 +153,12 @@ class TestInferenceHelpers(unittest.TestCase):
             self.assertEqual(len(sweep.call_args.args[1]), 3)  # primary + two ensemble checkpoints
 
     def test_inference_only_rejects_missing_checkpoint_without_training(self):
-        import lab_workflow
+        import inference
         with tempfile.TemporaryDirectory() as directory:
             missing = Path(directory) / "missing.pth"
-            with patch.object(lab_workflow, "sweep_inference") as sweep:
+            with patch.object(inference, "sweep_inference") as sweep:
                 with self.assertRaisesRegex(FileNotFoundError, "Checkpoint không tồn tại"):
-                    lab_workflow.run_inference_only(
+                    inference.run_inference_only(
                         missing, "convnext_tiny", "images", "labels", directory)
             sweep.assert_not_called()
 
