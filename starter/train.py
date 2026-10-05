@@ -5,6 +5,7 @@ import argparse
 from dataclasses import asdict, dataclass, fields
 import json
 import math
+import os
 from pathlib import Path
 import random
 import sys
@@ -53,6 +54,7 @@ class Config:
     pred_dir: str = "predictions"
     curves_dir: str = "curves"
     save_test_predictions: bool = False
+    resume_checkpoint: str | None = None
 
 
 def run_dir(cfg: Config) -> Path:
@@ -85,6 +87,15 @@ def set_seed(seed: int) -> None:
         torch.backends.cudnn.benchmark = False
     except ImportError:
         pass
+
+
+def _atomic_torch_save(payload, path: str | Path, torch_module) -> None:
+    """Persist a checkpoint atomically so an interrupted Drive write is not used."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    torch_module.save(payload, temporary)
+    os.replace(temporary, path)
 
 
 def build_optimizer(model, cfg: Config):
@@ -316,7 +327,44 @@ def run(cfg: Config) -> dict:
     history, best_f1, best_epoch = [], -float("inf"), 0
     best_state = None
     epoch_times = []
-    for epoch in range(1, cfg.epochs + 1):
+    start_epoch = 1
+    if cfg.resume_checkpoint:
+        resume_path = Path(cfg.resume_checkpoint)
+        if not resume_path.is_file():
+            raise FileNotFoundError(f"Resume checkpoint not found: {resume_path}")
+        try:
+            saved = torch.load(resume_path, map_location=device, weights_only=False)
+        except TypeError:  # compatibility with older Colab torch versions
+            saved = torch.load(resume_path, map_location=device)
+        saved_config = saved.get("config")
+        current_config = asdict(cfg)
+        current_config["resume_checkpoint"] = None
+        if saved_config is not None:
+            saved_config["resume_checkpoint"] = None
+            # Test prediction generation is intentionally enabled only in the final stage.
+            current_config["save_test_predictions"] = saved_config["save_test_predictions"]
+            if saved_config != current_config:
+                raise ValueError("Resume config differs from checkpoint; use a new exp_id/seed or restore its config.")
+        model.load_state_dict(saved["model_state"])
+        optimizer.load_state_dict(saved["optimizer_state"])
+        scheduler.load_state_dict(saved["scheduler_state"])
+        scaler.load_state_dict(saved["scaler_state"])
+        if ema is not None and saved.get("ema_state") is not None:
+            ema.model.load_state_dict(saved["ema_state"])
+        history = saved["history"]
+        best_f1, best_epoch = saved["best_f1"], saved["best_epoch"]
+        best_state, epoch_times = saved["best_state"], saved["epoch_times"]
+        start_epoch = int(saved["epoch"]) + 1
+        random.setstate(saved["python_rng"])
+        np.random.set_state(saved["numpy_rng"])
+        torch.set_rng_state(saved["torch_rng"].cpu())
+        if device.type == "cuda" and saved.get("cuda_rng") is not None:
+            torch.cuda.set_rng_state_all(saved["cuda_rng"])
+        print(f"Resume {resume_path}: next epoch {start_epoch}")
+    history_path = run_path / "history.csv"
+    checkpoint_path = run_path / "best.pth"
+    last_checkpoint_path = run_path / "last.pth"
+    for epoch in range(start_epoch, cfg.epochs + 1):
         epoch_start = time.perf_counter()
         train_stats = train_one_epoch(model, train_loader, criterion, optimizer, scheduler,
                                       scaler, cfg, device, ema)
@@ -336,11 +384,25 @@ def run(cfg: Config) -> dict:
             best_f1, best_epoch = float(metrics["macro_f1"]), epoch
             best_state = {key: value.detach().cpu().clone()
                           for key, value in evaluator.state_dict().items()}
+        pd.DataFrame(history).to_csv(history_path, index=False)
+        _atomic_torch_save({
+            "epoch": epoch,
+            "config": asdict(cfg),
+            "model_state": model.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict(),
+            "scaler_state": scaler.state_dict(),
+            "ema_state": ema.model.state_dict() if ema is not None else None,
+            "history": history, "best_f1": best_f1, "best_epoch": best_epoch,
+            "best_state": best_state, "epoch_times": epoch_times,
+            "python_rng": random.getstate(), "numpy_rng": np.random.get_state(),
+            "torch_rng": torch.get_rng_state(),
+            "cuda_rng": torch.cuda.get_rng_state_all() if device.type == "cuda" else None,
+        }, last_checkpoint_path, torch)
     if best_state is None:
         raise RuntimeError("Không tạo được checkpoint tốt nhất")
-    checkpoint_path = run_path / "best.pth"
-    torch.save({"state_dict": best_state, "best_epoch": best_epoch, "best_val_macro_f1": best_f1},
-               checkpoint_path)
+    _atomic_torch_save({"state_dict": best_state, "best_epoch": best_epoch,
+                        "best_val_macro_f1": best_f1}, checkpoint_path, torch)
     evaluator = ema.model if ema is not None else model
     evaluator.load_state_dict(best_state)
     selected_resolution = cfg.inference_img_size or cfg.img_size

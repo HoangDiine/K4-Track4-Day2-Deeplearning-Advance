@@ -71,6 +71,19 @@ class TestTrainHelpers(unittest.TestCase):
     def test_test_predictions_off_by_default(self):
         self.assertFalse(train.Config().save_test_predictions)
 
+    def test_training_can_resume_from_epoch_checkpoint(self):
+        self.assertIsNone(train.Config().resume_checkpoint)
+        self.assertEqual(train.parse_overrides(["resume_checkpoint=runs/T01/seed0/last.pth"]),
+                         {"resume_checkpoint": "runs/T01/seed0/last.pth"})
+
+    def test_atomic_checkpoint_save_leaves_loadable_file_and_no_temp_file(self):
+        import torch
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "last.pth"
+            train._atomic_torch_save({"epoch": 2}, path, torch)
+            self.assertEqual(torch.load(path, weights_only=False)["epoch"], 2)
+            self.assertFalse(path.with_name(path.name + ".tmp").exists())
+
     def test_baseline_defaults_match_guide(self):
         c = train.Config()
         self.assertEqual((c.epochs, c.batch_size, c.lr_backbone, c.lr_head, c.weight_decay),
@@ -123,6 +136,17 @@ class TestStarterFiles(unittest.TestCase):
         self.assertNotIn("from lab_workflow import", text)
         self.assertIn("CHECKPOINT_PATH = None", text)
         self.assertNotIn("assert torch.cuda.is_available()", text)
+        self.assertIn("TIME_BUDGET_HOURS = 3", text)
+        self.assertIn("drive.mount", text)
+        self.assertIn("resume_checkpoint", text)
+        self.assertIn("'T01'", text)
+        self.assertIn("'T02'", text)
+        self.assertIn("'T03'", text)
+        self.assertIn("'I01'", text)
+        self.assertIn("'I02'", text)
+        self.assertIn("'I04'", text)
+        self.assertIn("'I07'", text)
+        self.assertNotIn("TODO", text)
         for cell in nb["cells"]:
             if cell["cell_type"] == "code":
                 code = "".join(cell["source"])
