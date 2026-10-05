@@ -1,0 +1,494 @@
+[
+  {
+    "exp_id": "T00",
+    "seed": 0,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9628359323990789,
+    "top1_val": 0.9705798343330477,
+    "ece_val": 0.008772553658312018,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 80.05339704833341,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9700598802395209,
+      "macro_f1": 0.9636870567787599,
+      "balanced_acc": 0.9605822411230412,
+      "ece": 0.005557251866702007,
+      "nll": 0.09807304551056524,
+      "precision": "[0.96744186 0.93665158 0.98086124 0.98989899 0.93721973 0.97435897\n 0.98584906 0.95959596 0.97385621]",
+      "recall": "[0.92035398 0.97183099 0.99033816 0.95609756 0.98122066 0.94059406\n 0.97209302 0.93137255 0.98133919]",
+      "f1": "[0.94331066 0.95391705 0.98557692 0.97270471 0.9587156  0.95717884\n 0.97892272 0.94527363 0.97758338]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 208    1    0    0    0    0    0    5   12]\n [   0  207    0    0    0    0    0    2    4]\n [   0    0  205    0    0    0    0    0    2]\n [   1    0    1  196    4    0    0    1    2]\n [   0    0    1    0  209    0    0    0    3]\n [   0    0    0    0    0  190    0    0   12]\n [   0    1    0    0    0    0  209    0    5]\n [   3    2    0    0    0    0    1  190    8]\n [   3   10    2    2   10    5    2    0 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/T00/seed0/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  },
+  {
+    "exp_id": "F01",
+    "seed": 0,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9628359323990789,
+    "top1_val": 0.9705798343330477,
+    "ece_val": 0.008772553658312018,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 86.53400049800014,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9700598802395209,
+      "macro_f1": 0.9636870567787599,
+      "balanced_acc": 0.9605822411230412,
+      "ece": 0.005557251866702007,
+      "nll": 0.09807304551056524,
+      "precision": "[0.96744186 0.93665158 0.98086124 0.98989899 0.93721973 0.97435897\n 0.98584906 0.95959596 0.97385621]",
+      "recall": "[0.92035398 0.97183099 0.99033816 0.95609756 0.98122066 0.94059406\n 0.97209302 0.93137255 0.98133919]",
+      "f1": "[0.94331066 0.95391705 0.98557692 0.97270471 0.9587156  0.95717884\n 0.97892272 0.94527363 0.97758338]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 208    1    0    0    0    0    0    5   12]\n [   0  207    0    0    0    0    0    2    4]\n [   0    0  205    0    0    0    0    0    2]\n [   1    0    1  196    4    0    0    1    2]\n [   0    0    1    0  209    0    0    0    3]\n [   0    0    0    0    0  190    0    0   12]\n [   0    1    0    0    0    0  209    0    5]\n [   3    2    0    0    0    0    1  190    8]\n [   3   10    2    2   10    5    2    0 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/F01/seed0/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  },
+  {
+    "exp_id": "T00",
+    "seed": 1,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9629236969299237,
+    "top1_val": 0.9697229363039132,
+    "ece_val": 0.006476576127088038,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 84.848887154,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9677787282577702,
+      "macro_f1": 0.9589875392650532,
+      "balanced_acc": 0.9563565744624761,
+      "ece": 0.009034408463601302,
+      "nll": 0.10362078315263962,
+      "precision": "[0.95412844 0.95813953 0.96682464 0.98994975 0.91891892 0.96984925\n 0.97674419 0.94845361 0.97491821]",
+      "recall": "[0.92035398 0.96713615 0.98550725 0.96097561 0.95774648 0.95544554\n 0.97674419 0.90196078 0.98133919]",
+      "f1": "[0.93693694 0.96261682 0.97607656 0.97524752 0.93793103 0.96259352\n 0.97674419 0.92462312 0.97811816]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 208    0    0    0    1    2    0    4   11]\n [   0  206    0    0    0    0    0    2    5]\n [   1    0  204    0    1    0    0    0    1]\n [   1    1    2  197    1    0    0    0    3]\n [   0    0    4    1  204    0    0    0    4]\n [   0    0    0    0    0  193    0    2    7]\n [   0    1    0    0    0    0  210    0    4]\n [   6    1    0    1    0    0    1  184   11]\n [   2    6    1    0   15    4    4    2 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/T00/seed1/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  },
+  {
+    "exp_id": "F01",
+    "seed": 1,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9629236969299237,
+    "top1_val": 0.9697229363039132,
+    "ece_val": 0.006476576127088038,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 82.48371071099973,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9677787282577702,
+      "macro_f1": 0.9589875392650532,
+      "balanced_acc": 0.9563565744624761,
+      "ece": 0.009034408463601302,
+      "nll": 0.10362078315263962,
+      "precision": "[0.95412844 0.95813953 0.96682464 0.98994975 0.91891892 0.96984925\n 0.97674419 0.94845361 0.97491821]",
+      "recall": "[0.92035398 0.96713615 0.98550725 0.96097561 0.95774648 0.95544554\n 0.97674419 0.90196078 0.98133919]",
+      "f1": "[0.93693694 0.96261682 0.97607656 0.97524752 0.93793103 0.96259352\n 0.97674419 0.92462312 0.97811816]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 208    0    0    0    1    2    0    4   11]\n [   0  206    0    0    0    0    0    2    5]\n [   1    0  204    0    1    0    0    0    1]\n [   1    1    2  197    1    0    0    0    3]\n [   0    0    4    1  204    0    0    0    4]\n [   0    0    0    0    0  193    0    2    7]\n [   0    1    0    0    0    0  210    0    4]\n [   6    1    0    1    0    0    1  184   11]\n [   2    6    1    0   15    4    4    2 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/F01/seed1/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  },
+  {
+    "exp_id": "T00",
+    "seed": 2,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9578509697317207,
+    "top1_val": 0.967723507569266,
+    "ece_val": 0.00825411070422649,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 81.65512221766676,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9703450242372398,
+      "macro_f1": 0.9627597811182499,
+      "balanced_acc": 0.961042913501912,
+      "ece": 0.006197876046454019,
+      "nll": 0.10120280851903972,
+      "precision": "[0.96759259 0.92825112 0.99014778 0.98529412 0.90789474 0.98974359\n 0.96818182 0.97354497 0.97758338]",
+      "recall": "[0.92477876 0.97183099 0.97101449 0.9804878  0.97183099 0.95544554\n 0.99069767 0.90196078 0.98133919]",
+      "f1": "[0.94570136 0.94954128 0.9804878  0.98288509 0.93877551 0.97229219\n 0.97931034 0.93638677 0.97945768]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 209    3    0    1    1    0    0    3    9]\n [   0  207    0    0    0    0    0    1    5]\n [   1    0  201    0    3    0    0    0    2]\n [   1    0    1  201    1    0    0    0    1]\n [   0    0    1    1  207    0    0    0    4]\n [   0    0    0    0    0  193    0    0    9]\n [   0    1    0    0    0    0  213    0    1]\n [   4    5    0    0    0    0    1  184   10]\n [   1    7    0    1   16    2    6    1 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/T00/seed2/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  },
+  {
+    "exp_id": "F01",
+    "seed": 2,
+    "backbone": "convnext_tiny",
+    "pretrained_tag": "in12k_ft_in1k",
+    "params_m": 27.827049,
+    "gmac": 4.454770176,
+    "img_size": 224,
+    "best_epoch": 3,
+    "macro_f1_val": 0.9578509697317207,
+    "top1_val": 0.967723507569266,
+    "ece_val": 0.00825411070422649,
+    "temperature": 1.0,
+    "train_seconds_per_epoch": 82.86819872000008,
+    "gpu": "Tesla T4",
+    "torch": "2.11.0+cu130",
+    "split": {
+      "n": {
+        "train": 10501,
+        "val": 3501,
+        "test": 3507
+      },
+      "per_class": {
+        "train": {
+          "Chinee Apple": 675,
+          "Lantana": 637,
+          "Parkinsonia": 618,
+          "Parthenium": 613,
+          "Prickly Acacia": 637,
+          "Rubber Vine": 605,
+          "Siam Weed": 644,
+          "Snake Weed": 609,
+          "Negatives": 5463
+        },
+        "val": {
+          "Chinee Apple": 225,
+          "Lantana": 213,
+          "Parkinsonia": 206,
+          "Parthenium": 204,
+          "Prickly Acacia": 212,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 203,
+          "Negatives": 1821
+        },
+        "test": {
+          "Chinee Apple": 226,
+          "Lantana": 213,
+          "Parkinsonia": 207,
+          "Parthenium": 205,
+          "Prickly Acacia": 213,
+          "Rubber Vine": 202,
+          "Siam Weed": 215,
+          "Snake Weed": 204,
+          "Negatives": 1822
+        }
+      },
+      "overlap": {
+        "train_val": 0,
+        "train_test": 0,
+        "val_test": 0
+      },
+      "union": 17509,
+      "images_dir": "/content/deepweeds_data"
+    },
+    "test_metrics": {
+      "n": 3507,
+      "top1": 0.9703450242372398,
+      "macro_f1": 0.9627597811182499,
+      "balanced_acc": 0.961042913501912,
+      "ece": 0.006197876046454019,
+      "nll": 0.10120280851903972,
+      "precision": "[0.96759259 0.92825112 0.99014778 0.98529412 0.90789474 0.98974359\n 0.96818182 0.97354497 0.97758338]",
+      "recall": "[0.92477876 0.97183099 0.97101449 0.9804878  0.97183099 0.95544554\n 0.99069767 0.90196078 0.98133919]",
+      "f1": "[0.94570136 0.94954128 0.9804878  0.98288509 0.93877551 0.97229219\n 0.97931034 0.93638677 0.97945768]",
+      "support": "[ 226.  213.  207.  205.  213.  202.  215.  204. 1822.]",
+      "confusion": "[[ 209    3    0    1    1    0    0    3    9]\n [   0  207    0    0    0    0    0    1    5]\n [   1    0  201    0    3    0    0    0    2]\n [   1    0    1  201    1    0    0    0    1]\n [   0    0    1    1  207    0    0    0    4]\n [   0    0    0    0    0  193    0    0    9]\n [   0    1    0    0    0    0  213    0    1]\n [   4    5    0    0    0    0    1  184   10]\n [   1    7    0    1   16    2    6    1 1788]]"
+    },
+    "checkpoint": "/content/drive/MyDrive/DeepWeedsLab/runs/F01/seed2/best.pth",
+    "tta": "none",
+    "inference_img_size": 224
+  }
+]
